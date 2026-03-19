@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/prisma";
 import { PbiClientError, pbiGet } from "@/server/integrations/pbi/pbiClient";
 import { pbiEndpoints, type PbiEndpointKey } from "@/server/integrations/pbi/endpoints";
 import type { Prisma } from "@prisma/client";
+import { applyPbiEndpointQuery, resolvePbiPath } from "./path-resolver";
 
 async function getDefaultCompanyId(): Promise<string | null> {
   const fromEnv = process.env.DEFAULT_COMPANY_ID;
@@ -31,8 +32,8 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
   const errors: Array<{ endpoint: PbiEndpointKey; message: string }> = [];
 
   for (const ep of pbiEndpoints) {
-    const resolvedPath = resolvePath(ep.path, ep.pathEnv);
-    const pathWithQuery = applyEndpointQuery(ep.key, resolvedPath);
+    const resolvedPath = resolvePbiPath(ep.path, ep.pathEnv);
+    const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath);
     try {
       const payload = await pbiGet(pathWithQuery, { apiKeyEnv: ep.apiKeyEnv });
 
@@ -108,27 +109,5 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
   });
 
   return { syncRunId: syncRun.id, status: finalStatus, errors };
-}
-
-function resolvePath(defaultPath: string, pathEnv: string): string {
-  const custom = process.env[pathEnv];
-  return custom?.trim() ? custom.trim() : defaultPath;
-}
-
-function applyEndpointQuery(endpoint: PbiEndpointKey, path: string): string {
-  if (endpoint !== "disponibilidade_equipamento_mes_a_mes") return path;
-
-  const periodo = process.env.PBI_DISP_MES_PERIODO?.trim();
-  const dataInicio = process.env.PBI_DISP_MES_DATA_INICIO?.trim();
-  const dataFim = process.env.PBI_DISP_MES_DATA_FIM?.trim();
-
-  const params = new URLSearchParams();
-  if (periodo) params.set("periodo", periodo);
-  if (dataInicio) params.set("data_inicio", dataInicio);
-  if (dataFim) params.set("data_fim", dataFim);
-
-  if (!params.toString()) return path;
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}${params.toString()}`;
 }
 
