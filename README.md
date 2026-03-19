@@ -12,6 +12,7 @@ Plataforma de gestão operacional, auditoria e governança para a Engenharia Cl�
 - Auth.js / NextAuth (Auth com `Credentials`)
 - Integração PBI: somente backend
 - Sincronização periódica: `POST /api/sync/pbi`
+- PWA (manifest + service worker)
 
 ## Pré-requisitos
 - Node.js 20+
@@ -56,6 +57,11 @@ npm run dev
 Acesse:
 - `/login`
 - `/dashboard`
+
+## PWA (uso em celular)
+- O app expõe `manifest.webmanifest` e `service worker` (`/sw.js`).
+- Em navegadores mobile, você pode usar via web normalmente e também "Adicionar à tela inicial".
+- Para refletir mudanças de versão de cache, incremente a constante `CACHE_NAME` em `public/sw.js`.
 
 ## Sincronização PBI (a cada 10 minutos)
 Integrações externas ocorrem **apenas no backend** e o token não é exposto no frontend.
