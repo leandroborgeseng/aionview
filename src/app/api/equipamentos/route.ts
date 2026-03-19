@@ -4,7 +4,9 @@ import { getLatestPayloadByEndpoint } from "@/server/repositories/raw-payload-re
 import { normalizeEquipments } from "@/server/services/pbi-normalizers";
 
 export async function GET() {
-  const latest = await getLatestPayloadByEndpoint("equipamentos");
+  const latest =
+    (await getLatestPayloadByEndpoint("equipamentos")) ??
+    (await getLatestPayloadByEndpoint("disponibilidade_equipamento_mes_a_mes"));
 
   if (!latest) {
     return NextResponse.json(

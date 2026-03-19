@@ -4,7 +4,9 @@ import { getLatestPayloadByEndpoint } from "@/server/repositories/raw-payload-re
 import { buildDashboardSummary } from "@/server/services/pbi-normalizers";
 
 export async function GET() {
-  const equipamentos = await getLatestPayloadByEndpoint("equipamentos");
+  const equipamentos =
+    (await getLatestPayloadByEndpoint("equipamentos")) ??
+    (await getLatestPayloadByEndpoint("disponibilidade_equipamento_mes_a_mes"));
   const osAnalitico = await getLatestPayloadByEndpoint("listagem_analitica_das_os");
   const osResumido = await getLatestPayloadByEndpoint("listagem_analitica_das_os_resumida");
   const disponibilidade = await getLatestPayloadByEndpoint("disponibilidade_equipamento");
