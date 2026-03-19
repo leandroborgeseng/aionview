@@ -10,6 +10,7 @@ export function applyPbiEndpointQuery(endpoint: PbiEndpointKey, path: string): s
   const params = current.searchParams;
 
   const defaultPeriodo = process.env.PBI_DEFAULT_PERIODO?.trim() || "MesAtual";
+  const defaultOsPeriodo = process.env.PBI_OS_PERIODO?.trim() || "AnoCorrente";
   const defaultTipoManutencao =
     process.env.PBI_DEFAULT_TIPO_MANUTENCAO?.trim() || "Todos";
   const defaultDataInicio =
@@ -37,7 +38,9 @@ export function applyPbiEndpointQuery(endpoint: PbiEndpointKey, path: string): s
     case "listagem_analitica_das_os":
     case "listagem_analitica_das_os_resumida": {
       ensure(params, "tipoManutencao", defaultTipoManutencao);
-      ensure(params, "periodo", defaultPeriodo);
+      ensure(params, "periodo", defaultOsPeriodo);
+      ensure(params, "pagina", "0");
+      ensure(params, "qtdPorPagina", "50000");
       addMulti(params, "listaEmpresaId", defaultEmpresasIds);
       break;
     }

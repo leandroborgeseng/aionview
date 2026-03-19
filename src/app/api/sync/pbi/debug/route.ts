@@ -63,13 +63,18 @@ export async function GET(req: Request) {
   for (const ep of resolved) {
     try {
       const apiKey = process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY ?? "";
+      const isOficinaEndpoint = ep.endpoint === "oficina";
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+      };
+      if (isOficinaEndpoint) {
+        headers["API-KEY"] = apiKey;
+      } else {
+        headers["X-API-KEY"] = apiKey;
+      }
       const response = await fetch(ep.fullUrl, {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-          "X-API-KEY": apiKey,
-          "API-KEY": apiKey,
-        },
+        headers,
       });
 
       let bodyText = "";

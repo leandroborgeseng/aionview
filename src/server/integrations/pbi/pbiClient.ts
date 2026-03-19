@@ -20,12 +20,12 @@ function getBaseUrl() {
 
 function getApiKey(apiKeyEnv?: string) {
   const fromEndpoint = apiKeyEnv ? process.env[apiKeyEnv] : undefined;
-  const apiKey = fromEndpoint ?? process.env.PBI_API_KEY;
+  const apiKey = fromEndpoint ?? process.env.PBI_API_KEY ?? process.env.EFFORT_API_KEY;
   if (!apiKey) {
     if (apiKeyEnv) {
-      throw new Error(`Missing env ${apiKeyEnv} (or fallback PBI_API_KEY)`);
+      throw new Error(`Missing env ${apiKeyEnv} (or fallback PBI_API_KEY / EFFORT_API_KEY)`);
     }
-    throw new Error("Missing env PBI_API_KEY");
+    throw new Error("Missing env PBI_API_KEY (or EFFORT_API_KEY)");
   }
   return apiKey;
 }
@@ -34,15 +34,22 @@ export async function pbiGet<T = PbiResponse>(path: string, opts?: { apiKeyEnv?:
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   const apiKey = getApiKey(opts?.apiKeyEnv);
+  const normalizedPath = path.toLowerCase();
+  const isOficinaEndpoint = normalizedPath.includes("/oficina");
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+  // Compatibilidade com cliente legado: /oficina usa API-KEY; demais usam X-API-KEY.
+  if (isOficinaEndpoint) {
+    headers["API-KEY"] = apiKey;
+  } else {
+    headers["X-API-KEY"] = apiKey;
+  }
 
   const res = await fetch(url, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      // Alguns endpoints exigem variantes, por isso enviamos ambos.
-      "X-API-KEY": apiKey,
-      "API-KEY": apiKey,
-    },
+    headers,
   });
 
   if (!res.ok) {
