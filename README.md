@@ -95,8 +95,8 @@ Pipeline (incremental, base já implementada):
    - URL: `https://SEU_DOMINIO/api/sync/pbi`
    - Header: `x-cron-secret`
 
-Observação: o container **não** roda comandos de Prisma no boot (para evitar falhas/race conditions no startup).
-Execute `db push`/migrações/seed como tarefa manual (one-off) no Railway quando necessário.
+Observação: o container roda bootstrap Prisma no startup (`db push` + `db seed`) quando `DATABASE_URL` está definido.
+Isso facilita o primeiro deploy e garante criação de tabelas automaticamente.
 
 ## Rotas internas (base)
 - `GET /api/health`

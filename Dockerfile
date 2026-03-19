@@ -36,5 +36,5 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then echo 'Aguardando banco e aplicando schema...'; for i in 1 2 3 4 5; do npx prisma db push --schema prisma/schema.prisma --config prisma.config.ts && break; echo \"Tentativa $i falhou, aguardando 5s...\"; sleep 5; done; echo 'Executando seed...'; npx prisma db seed --schema prisma/schema.prisma --config prisma.config.ts || true; else echo 'DATABASE_URL ausente, iniciando app sem bootstrap prisma'; fi; node server.js"]
 
