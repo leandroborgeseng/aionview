@@ -5,7 +5,16 @@ function asArray(payload: unknown): unknown[] {
   if (!payload || typeof payload !== "object") return [];
 
   const obj = payload as Dict;
-  const candidateKeys = ["data", "items", "results", "value", "rows", "content"];
+  const candidateKeys = [
+    "data",
+    "items",
+    "Itens",
+    "itens",
+    "results",
+    "value",
+    "rows",
+    "content",
+  ];
   for (const key of candidateKeys) {
     const value = obj[key];
     if (Array.isArray(value)) return value;
