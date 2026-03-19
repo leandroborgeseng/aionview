@@ -35,9 +35,5 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-CMD [
-  "sh",
-  "-c",
-  "npx prisma db push || true; npx prisma db seed || true; node server.js"
-]
+CMD ["sh", "-c", "npx prisma db push || true; npx prisma db seed || true; node server.js"]
 
