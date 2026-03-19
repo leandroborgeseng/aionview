@@ -1,0 +1,978 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ScopeType {
+  company
+  unit
+  sector
+  workshop
+}
+
+enum SyncStatus {
+  running
+  success
+  error
+}
+
+enum RawPayloadStatus {
+  success
+  error
+}
+
+enum LockCategory {
+  aguardando_compra
+  aguardando_peça
+  aguardando_fornecedor
+  aguardando_engenharia_clinica
+  aguardando_calibracao
+  aguardando_preventiva
+  aguardando_tse
+  aguardando_setor
+  aguardando_aprovacao
+  aguardando_avaliacao_tecnica
+  sem_tratativa_clara
+  em_execucao
+  concluida
+  cancelada
+}
+
+enum RiskAssistentialCategory {
+  baixo
+  moderado
+  alto
+  critico
+}
+
+enum ObsolescenceCategory {
+  adequado
+  em_atencao
+  obsoleto
+  critico_para_substituicao
+}
+
+enum ContractType {
+  manutencao
+  locacao
+}
+
+enum ContractStatus {
+  ativo
+  encerrado
+  a_vencer
+  cancelado
+}
+
+enum PurchaseRequestStatus {
+  solicitada
+  em_analise_tecnica
+  aprovada_tecnicamente
+  em_aprovacao_gerencial
+  aprovada
+  em_cotacao
+  em_compra
+  comprada
+  recebida
+  cancelada
+}
+
+enum InvestmentItemStatus {
+  planejado
+  aprovado
+  executado
+  cancelado
+}
+
+enum ChecklistTemplateType {
+  recebimento
+  instalacao
+  preventiva
+  calibracao
+  tse
+  desativacao
+  inventario
+}
+
+enum ChecklistRunStatus {
+  pendente
+  em_andamento
+  concluido
+  cancelado
+}
+
+enum InventoryAuditStatus {
+  pendente_de_conferencia
+  confirmado
+  nao_localizado
+  nao_reconhecido
+  equipamento_extra_informado
+  em_auditoria
+  regularizado
+}
+
+enum ServiceOrderStatus {
+  aberta
+  em_andamento
+  aguardando
+  concluida
+  cancelada
+}
+
+enum ServiceOrderSituation {
+  nova
+  em_tratativa
+  cancelada
+  concluida
+}
+
+enum MaintenanceScheduleType {
+  preventiva
+  calibracao
+  tse
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // NextAuth relations
+  accounts      Account[]
+  sessions      Session[]
+
+  // RBAC relations
+  userRoles     UserRole[]
+  userScopes    UserScope[]
+  auditLogs     AuditLog[] @relation("AuditActor")
+  inventoryAuditsStarted InventoryAudit[] @relation("InventoryAuditStartedBy")
+  purchaseRequestsRequested PurchaseRequest[] @relation("PurchaseRequestRequester")
+  notifications  Notification[]
+}
+
+model Role {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  createdAt   DateTime    @default(now())
+
+  userRoles        UserRole[]
+  rolePermissions  RolePermission[]
+}
+
+model Permission {
+  id          String      @id @default(uuid())
+  key         String      @unique
+  description String?
+
+  rolePermissions RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId        String
+  permissionId  String
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([roleId, permissionId])
+}
+
+model UserScope {
+  id String @id @default(uuid())
+  userId String
+  scopeType ScopeType
+  // Mantém como UUID simples para suportar múltiplos tipos de escopo.
+  scopeId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, scopeType])
+  @@unique([userId, scopeType, scopeId])
+}
+
+// NextAuth standard tables (Prisma Adapter)
+model Account {
+  id                 String  @id @default(uuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  units      Unit[]
+  sectors    Sector[]
+  workshops  Workshop[]
+  equipments Equipment[]
+  serviceOrders ServiceOrder[]
+  contracts  Contract[]
+  syncRuns   SyncRun[]
+
+  melDefinitions MelDefinition[]
+  auditLogs AuditLog[]
+  notifications Notification[]
+
+  costCenters CostCenter[]
+  maintenanceTypes MaintenanceType[]
+  equipmentAttachments EquipmentAttachment[]
+  serviceOrderSnapshots ServiceOrderSnapshot[]
+  availabilityMetrics AvailabilityMetric[]
+  availabilityMonthlyMetrics AvailabilityMonthlyMetric[]
+  mtbfMetrics MtbfMetric[]
+  tpmMetrics TpmMetric[]
+  inventoryAudits InventoryAudit[]
+
+  purchaseRequests PurchaseRequest[]
+  investmentPlanItems InvestmentPlanItem[]
+
+  classificationRules ClassificationRule[]
+  lockClassifications LockClassification[]
+  equipmentRiskProfiles EquipmentRiskProfile[]
+  obsolescenceProfiles ObsolescenceProfile[]
+
+  checklistTemplates ChecklistTemplate[]
+  checklistRuns ChecklistRun[]
+  rawApiPayloads RawApiPayload[]
+}
+
+model Unit {
+  id        String   @id @default(uuid())
+  companyId String
+  name      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sectors Sector[]
+  workshops Workshop[]
+  equipments Equipment[]
+  serviceOrders ServiceOrder[]
+  costCenters CostCenter[]
+  inventoryAudits InventoryAudit[]
+  contracts Contract[]
+  purchaseRequests PurchaseRequest[]
+
+  @@index([companyId])
+}
+
+model Sector {
+  id        String   @id @default(uuid())
+  companyId String
+  unitId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  equipments Equipment[]
+  serviceOrders ServiceOrder[]
+
+  melDefinitions MelDefinition[]
+  inventoryAudits InventoryAudit[]
+  contracts Contract[]
+  purchaseRequests PurchaseRequest[]
+  investmentPlanItems InvestmentPlanItem[]
+
+  @@index([companyId, unitId])
+}
+
+model Workshop {
+  id        String   @id @default(uuid())
+  companyId String
+  unitId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  equipments Equipment[]
+  serviceOrders ServiceOrder[]
+  contracts Contract[]
+  purchaseRequests PurchaseRequest[]
+
+  @@index([companyId, unitId])
+}
+
+model CostCenter {
+  id        String   @id @default(uuid())
+  companyId String
+  unitId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  contracts Contract[]
+
+  @@index([companyId, unitId])
+}
+
+model MaintenanceType {
+  id        String   @id @default(uuid())
+  companyId String
+  name      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  serviceOrders ServiceOrder[]
+
+  @@index([companyId])
+}
+
+model Equipment {
+  id        String   @id @default(uuid())
+  companyId String
+  unitId    String
+  sectorId  String
+  workshopId String?
+
+  tag            String?
+  patrimonio     String?
+  serialNumber   String?
+  name           String
+
+  manufacturer   String?
+  model          String?
+  criticality    String?
+
+  acquisitionDate DateTime?
+  manufactureDate  DateTime?
+  endOfLife        DateTime?
+  endOfService     DateTime?
+
+  anvisaRegisterValidUntil DateTime?
+
+  // Backup e redundância
+  hasBackup      Boolean @default(false)
+  backupQuantity Int? // quantos equivalentes
+  isChildUnique  Boolean @default(false)
+
+  // Pré-computados/derivados
+  melComponente  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  workshop Workshop? @relation(fields: [workshopId], references: [id])
+
+  serviceOrders ServiceOrder[]
+  attachments    EquipmentAttachment[]
+  availabilityMetrics AvailabilityMetric[]
+  availabilityMonthlyMetrics AvailabilityMonthlyMetric[]
+  mtbfMetrics    MtbfMetric[]
+  tpmMetrics     TpmMetric[]
+
+  inventoryAudits InventoryAudit[]
+  equipmentRiskProfiles EquipmentRiskProfile[]
+  obsolescenceProfiles ObsolescenceProfile[]
+
+  checklistRuns ChecklistRun[]
+
+  @@index([companyId, unitId, sectorId])
+  @@index([companyId, tag])
+  @@index([companyId, serialNumber])
+}
+
+model ServiceOrder {
+  id        String   @id @default(uuid())
+  companyId String
+  unitId    String
+  sectorId  String
+  workshopId String?
+
+  equipmentId String?
+  maintenanceTypeId String?
+
+  externalKey String? // id/número vindo da PBI
+  orderNumber String?
+
+  status           ServiceOrderStatus @default(aberta)
+  situationDaOS    ServiceOrderSituation @default(nova)
+  priority         String?
+
+  lockCategory     LockCategory?
+
+  // Campos textuais para auditoria/classificação
+  causa                       String?
+  observacaoDaPendencia       String?
+  pendencia                   String?
+  pendenciaAberta             Boolean?
+  observacaoDaOS             String?
+  motivoCancelamentoOS       String?
+  justificativaEncerramento String?
+
+  // Prazos/SLA (podem vir da API)
+  createdAtExternal DateTime?
+  plannedEndExternal DateTime?
+  executedEndExternal DateTime?
+  slaDays Int?
+
+  valorTotal     Decimal?
+  valorLocacao   Decimal?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  workshop Workshop? @relation(fields: [workshopId], references: [id])
+  equipment Equipment? @relation(fields: [equipmentId], references: [id])
+  maintenanceType MaintenanceType? @relation(fields: [maintenanceTypeId], references: [id])
+
+  snapshots ServiceOrderSnapshot[]
+
+  @@index([companyId, sectorId, status])
+  @@index([companyId, equipmentId])
+  @@index([companyId, orderNumber])
+}
+
+model ServiceOrderSnapshot {
+  id        String   @id @default(uuid())
+  companyId String
+  syncRunId String
+  serviceOrderId String
+
+  snapshotAt DateTime @default(now())
+
+  // payload do snapshot para trilha completa
+  raw Json
+
+  // campos derivados para timeline/indicadores
+  lockCategory LockCategory?
+  riskAssistentialCategory RiskAssistentialCategory?
+  obsolescenceCategory ObsolescenceCategory?
+
+  lockEvidence Json?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  syncRun SyncRun @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+
+  lockClassifications LockClassification[]
+
+  @@index([syncRunId])
+  @@index([serviceOrderId])
+}
+
+model EquipmentAttachment {
+  id String @id @default(uuid())
+  companyId String
+  equipmentId String
+
+  fileName String?
+  contentType String?
+  url String?
+
+  raw Json?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model MaintenanceSchedule {
+  id String @id @default(uuid())
+  companyId String
+  unitId String
+  sectorId String
+
+  equipmentId String?
+  workshopId String?
+
+  type MaintenanceScheduleType
+  plannedAt DateTime
+  executedAt DateTime?
+
+  status String?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, type, plannedAt])
+}
+
+model AvailabilityMetric {
+  id String @id @default(uuid())
+  companyId String
+  syncRunId String?
+  equipmentId String
+
+  availabilityPercent Decimal?
+  tmefDays Decimal?
+  mtbfDays Decimal?
+  tpmDays Decimal?
+  downtimeDays Decimal?
+
+  raw Json?
+
+  snapshotAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model AvailabilityMonthlyMetric {
+  id String @id @default(uuid())
+  companyId String
+  equipmentId String
+  month DateTime
+
+  availabilityPercent Decimal?
+  tmefDays Decimal?
+  mtbfDays Decimal?
+  tpmDays Decimal?
+  downtimeDays Decimal?
+
+  raw Json?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, equipmentId, month])
+}
+
+model MtbfMetric {
+  id String @id @default(uuid())
+  companyId String
+  equipmentId String
+  syncRunId String?
+  valueDays Decimal?
+  snapshotAt DateTime @default(now())
+
+  raw Json?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model TpmMetric {
+  id String @id @default(uuid())
+  companyId String
+  equipmentId String
+  syncRunId String?
+  valueDays Decimal?
+  snapshotAt DateTime @default(now())
+
+  raw Json?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model InventoryAudit {
+  id String @id @default(uuid())
+  companyId String
+  unitId String
+  sectorId String
+
+  equipmentId String?
+  startedByUserId String?
+
+  status InventoryAuditStatus @default(pendente_de_conferencia)
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  equipment Equipment? @relation(fields: [equipmentId], references: [id])
+  startedBy User? @relation("InventoryAuditStartedBy", fields: [startedByUserId], references: [id])
+
+  items InventoryAuditItem[]
+}
+
+model InventoryAuditItem {
+  id String @id @default(uuid())
+  auditId String
+
+  equipmentId String?
+  tag String?
+  patrimonio String?
+  serialNumber String?
+  name String?
+
+  status InventoryAuditStatus
+  confirmPresence Boolean?
+  observations String?
+  extraInfo String?
+
+  createdAt DateTime @default(now())
+
+  audit InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
+}
+
+model MelDefinition {
+  id String @id @default(uuid())
+  companyId String
+  sectorId String
+  periodLabel String? // ex: 2026-01, ciclo semestral etc.
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  items MelItem[]
+}
+
+model MelItem {
+  id String @id @default(uuid())
+  melDefinitionId String
+
+  itemName String
+  minCount Int
+  idealCount Int
+  criticidade String?
+
+  // Vinculação a equipamentos (quando possível)
+  equipmentId String?
+
+  createdAt DateTime @default(now())
+
+  melDefinition MelDefinition @relation(fields: [melDefinitionId], references: [id], onDelete: Cascade)
+}
+
+model Contract {
+  id String @id @default(uuid())
+  companyId String
+  unitId String
+  sectorId String?
+  workshopId String?
+
+  supplier String
+  object String
+  type ContractType
+
+  valueMonthly Decimal?
+  valueAnnual Decimal?
+
+  startDate DateTime?
+  endDate DateTime?
+  status ContractStatus @default(ativo)
+
+  costCenterId String?
+  coverage String?
+  observations String?
+
+  valueTotalCalc Decimal?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  sector Sector? @relation(fields: [sectorId], references: [id])
+  workshop Workshop? @relation(fields: [workshopId], references: [id])
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+}
+
+model PurchaseRequest {
+  id String @id @default(uuid())
+  companyId String
+  unitId String
+  sectorId String?
+  workshopId String?
+
+  status PurchaseRequestStatus @default(solicitada)
+  requestedByUserId String?
+
+  motivo String?
+  justificativaTecnica String?
+
+  priority String?
+
+  valueRequested Decimal?
+  valueApproved Decimal?
+  valueExecuted Decimal?
+
+  linkedServiceOrderId String?
+  linkedEquipmentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  sector Sector? @relation(fields: [sectorId], references: [id])
+  workshop Workshop? @relation(fields: [workshopId], references: [id])
+  requestedBy User? @relation("PurchaseRequestRequester", fields: [requestedByUserId], references: [id])
+
+  approvals PurchaseRequestApproval[]
+}
+
+model PurchaseRequestApproval {
+  id String @id @default(uuid())
+  purchaseRequestId String
+  approverUserId String?
+
+  status String
+  notes String?
+  decidedAt DateTime @default(now())
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+}
+
+model InvestmentPlanItem {
+  id String @id @default(uuid())
+  companyId String
+  sectorId String?
+
+  year Int
+  item String
+  justificativa String?
+  criticidade String?
+
+  valorEstimado Decimal?
+  valorAprovado Decimal?
+  valorExecutado Decimal?
+
+  prioridade String?
+  tipo String? // substituicao/expansao/backup/etc
+  status InvestmentItemStatus @default(planejado)
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sector Sector? @relation(fields: [sectorId], references: [id])
+}
+
+model ClassificationRule {
+  id String @id @default(uuid())
+  companyId String
+
+  name String
+  enabled Boolean @default(true)
+  priority Int @default(100)
+
+  // Regra declarativa em JSON (ex: expressões sobre campos do snapshot)
+  ruleJson Json
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model LockClassification {
+  id String @id @default(uuid())
+  companyId String
+  serviceOrderSnapshotId String
+
+  category LockCategory
+  evidence Json?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  snapshot ServiceOrderSnapshot @relation(fields: [serviceOrderSnapshotId], references: [id], onDelete: Cascade)
+}
+
+model EquipmentRiskProfile {
+  id String @id @default(uuid())
+  companyId String
+  equipmentId String
+
+  score Int?
+  category RiskAssistentialCategory?
+  calculatedAt DateTime @default(now())
+
+  inputs Json?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model ObsolescenceProfile {
+  id String @id @default(uuid())
+  companyId String
+  equipmentId String
+
+  score Int?
+  category ObsolescenceCategory?
+  calculatedAt DateTime @default(now())
+
+  inputs Json?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+model ChecklistTemplate {
+  id String @id @default(uuid())
+  companyId String
+  type ChecklistTemplateType
+  title String
+
+  schemaJson Json?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  runs ChecklistRun[]
+}
+
+model ChecklistRun {
+  id String @id @default(uuid())
+  companyId String
+
+  checklistTemplateId String
+  equipmentId String?
+  serviceOrderId String?
+  inventoryAuditId String?
+
+  status ChecklistRunStatus @default(pendente)
+  runData Json
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  template ChecklistTemplate @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+  equipment Equipment? @relation(fields: [equipmentId], references: [id])
+
+  @@index([companyId, checklistTemplateId])
+}
+
+model Notification {
+  id String @id @default(uuid())
+  companyId String
+  userId String
+
+  type String
+  title String
+  message String?
+
+  createdAt DateTime @default(now())
+  readAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+  companyId String
+  actorUserId String?
+
+  action String
+  entityType String?
+  entityId String?
+
+  metadata Json?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([companyId, createdAt])
+}
+
+model SyncRun {
+  id String @id @default(uuid())
+  companyId String?
+
+  status SyncStatus @default(running)
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+
+  summary String?
+  error String?
+
+  payloads RawApiPayload[]
+  createdAt DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id])
+  snapshots ServiceOrderSnapshot[]
+}
+
+model RawApiPayload {
+  id String @id @default(uuid())
+  syncRunId String
+  companyId String?
+
+  endpoint String
+  receivedAt DateTime @default(now())
+  status RawPayloadStatus
+
+  requestMeta Json?
+  payload Json
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  syncRun SyncRun @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@index([syncRunId])
+  @@index([endpoint, receivedAt])
+}
+
