@@ -81,7 +81,7 @@ export default function DashboardPage() {
       ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Dashboard Geral</h1>
         <p className="text-sm opacity-80">
@@ -89,7 +89,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {kpiCards.map((c) => (
           <Card key={c.label} className="p-4">
             <div className="text-sm opacity-80">{c.label}</div>

@@ -98,7 +98,7 @@ export default function OsPage() {
   }, [loading, error, data]);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Ordens de Serviço Corretivas</h1>
         <p className="text-sm opacity-80">
