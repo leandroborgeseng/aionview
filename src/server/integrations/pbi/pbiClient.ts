@@ -48,7 +48,7 @@ export async function pbiGet<T = PbiResponse>(path: string, opts?: { apiKeyEnv?:
   if (!res.ok) {
     let body: unknown = undefined;
     try {
-      body = await res.json();
+      body = await res.clone().json();
     } catch {
       body = await res.text();
     }
