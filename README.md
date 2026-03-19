@@ -99,3 +99,4 @@ Observação: o container tenta rodar `prisma migrate deploy` e `prisma db seed`
 - `GET /api/health`
 - `POST /api/sync/pbi`
 - `POST /api/auth/*` (NextAuth)
+# aionview
