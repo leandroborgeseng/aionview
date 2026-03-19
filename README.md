@@ -70,6 +70,12 @@ As chaves de integração podem ser configuradas de duas formas:
 - por endpoint (`API_PBI_REL_CRONO_MANU`, `API_PBI_TIP_MANU`, etc.) **[prioridade]**
 - fallback global (`PBI_API_KEY`)
 
+Também é possível sobrescrever os caminhos dos endpoints via `PBI_PATH_*` para ambientes onde a API use rotas diferentes.
+Para `disponibilidade_equipamento_mes_a_mes`, você pode enviar parâmetros via:
+- `PBI_DISP_MES_PERIODO`
+- `PBI_DISP_MES_DATA_INICIO`
+- `PBI_DISP_MES_DATA_FIM`
+
 Rota interna:
 - `POST /api/sync/pbi`
 

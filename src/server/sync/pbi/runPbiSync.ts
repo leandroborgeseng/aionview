@@ -31,8 +31,10 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
   const errors: Array<{ endpoint: PbiEndpointKey; message: string }> = [];
 
   for (const ep of pbiEndpoints) {
+    const resolvedPath = resolvePath(ep.path, ep.pathEnv);
+    const pathWithQuery = applyEndpointQuery(ep.key, resolvedPath);
     try {
-      const payload = await pbiGet(ep.path, { apiKeyEnv: ep.apiKeyEnv });
+      const payload = await pbiGet(pathWithQuery, { apiKeyEnv: ep.apiKeyEnv });
 
       const payloadJson = payload as Prisma.InputJsonValue;
       await prisma.rawApiPayload.create({
@@ -43,6 +45,7 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
           status: "success",
           requestMeta: {
             path: ep.path,
+            resolvedPath: pathWithQuery,
             apiKeyEnv: ep.apiKeyEnv,
             apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
           },
@@ -80,6 +83,7 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
           status: "error",
           requestMeta: {
             path: ep.path,
+            resolvedPath: pathWithQuery,
             apiKeyEnv: ep.apiKeyEnv,
             apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
             httpStatus: status ?? null,
@@ -104,5 +108,27 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
   });
 
   return { syncRunId: syncRun.id, status: finalStatus, errors };
+}
+
+function resolvePath(defaultPath: string, pathEnv: string): string {
+  const custom = process.env[pathEnv];
+  return custom?.trim() ? custom.trim() : defaultPath;
+}
+
+function applyEndpointQuery(endpoint: PbiEndpointKey, path: string): string {
+  if (endpoint !== "disponibilidade_equipamento_mes_a_mes") return path;
+
+  const periodo = process.env.PBI_DISP_MES_PERIODO?.trim();
+  const dataInicio = process.env.PBI_DISP_MES_DATA_INICIO?.trim();
+  const dataFim = process.env.PBI_DISP_MES_DATA_FIM?.trim();
+
+  const params = new URLSearchParams();
+  if (periodo) params.set("periodo", periodo);
+  if (dataInicio) params.set("data_inicio", dataInicio);
+  if (dataFim) params.set("data_fim", dataFim);
+
+  if (!params.toString()) return path;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${params.toString()}`;
 }
 
