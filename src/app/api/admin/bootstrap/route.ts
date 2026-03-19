@@ -20,8 +20,17 @@ export async function POST(req: Request) {
   }
 
   try {
-    const adminEmail = getEnv("SEED_ADMIN_EMAIL", "admin@empresa.com");
-    const adminPassword = getEnv("SEED_ADMIN_PASSWORD", "admin123456");
+    let payload: { email?: string; password?: string } = {};
+    try {
+      payload = (await req.json()) as { email?: string; password?: string };
+    } catch {
+      // body opcional
+    }
+
+    const adminEmail =
+      payload.email?.trim() || getEnv("SEED_ADMIN_EMAIL", "admin@empresa.com");
+    const adminPassword =
+      payload.password?.trim() || getEnv("SEED_ADMIN_PASSWORD", "admin123456");
     const companyName = getEnv("SEED_COMPANY_NAME", "Empresa Principal");
     const unitName = getEnv("SEED_UNIT_NAME", "Unidade Principal");
     const sectorName = getEnv("SEED_SECTOR_NAME", "Setor Principal");
@@ -101,6 +110,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       adminEmail,
+      credentialsUpdated: true,
       companyId: company.id,
       unitId: unit.id,
       sectorId: sector.id,
