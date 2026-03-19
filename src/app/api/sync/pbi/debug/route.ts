@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getEnabledPbiEndpoints } from "@/server/integrations/pbi/endpoints";
-import { applyPbiEndpointQuery, resolvePbiPath } from "@/server/sync/pbi/path-resolver";
+import { applyPbiEndpointQuery, resolvePbiPath, type PbiQueryOverrides } from "@/server/sync/pbi/path-resolver";
 
 function authorized(req: Request) {
   const configured = process.env.CRON_SECRET;
@@ -28,12 +28,23 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const probe = url.searchParams.get("probe") === "1";
+  const includeAllEndpoints = url.searchParams.get("all") === "1";
   const baseUrl = (process.env.PBI_BASE_URL ?? "").replace(/\/+$/, "");
+  const queryOverrides: PbiQueryOverrides = {
+    osPeriodo: url.searchParams.get("osPeriodo") ?? undefined,
+    defaultPeriodo: url.searchParams.get("periodo") ?? undefined,
+    dataInicio: url.searchParams.get("dataInicio") ?? undefined,
+    dataFim: url.searchParams.get("dataFim") ?? undefined,
+    empresasIds: (url.searchParams.get("empresasIds") ?? "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean),
+  };
 
-  const enabledEndpoints = getEnabledPbiEndpoints();
+  const enabledEndpoints = getEnabledPbiEndpoints({ includeAll: includeAllEndpoints });
   const resolved = enabledEndpoints.map((ep) => {
     const resolvedPath = resolvePbiPath(ep.path, ep.pathEnv);
-    const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath);
+    const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath, queryOverrides);
     const fullUrl = `${baseUrl}${pathWithQuery.startsWith("/") ? pathWithQuery : `/${pathWithQuery}`}`;
     return {
       endpoint: ep.key,

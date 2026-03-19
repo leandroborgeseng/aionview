@@ -111,7 +111,11 @@ const defaultEnabledEndpoints: PbiEndpointKey[] = [
   "listagem_analitica_das_os_resumida",
 ];
 
-export function getEnabledPbiEndpoints() {
+export function getEnabledPbiEndpoints(opts?: { includeAll?: boolean }) {
+  if (opts?.includeAll) {
+    return pbiEndpoints;
+  }
+
   const raw = process.env.PBI_ENABLED_ENDPOINTS?.trim();
   if (!raw) {
     return pbiEndpoints.filter((ep) => defaultEnabledEndpoints.includes(ep.key));

@@ -5,23 +5,46 @@ export function resolvePbiPath(defaultPath: string, pathEnv: string): string {
   return custom?.trim() ? custom.trim() : defaultPath;
 }
 
-export function applyPbiEndpointQuery(endpoint: PbiEndpointKey, path: string): string {
+export type PbiQueryOverrides = {
+  osPeriodo?: string;
+  defaultPeriodo?: string;
+  empresasIds?: string[];
+  dataInicio?: string;
+  dataFim?: string;
+};
+
+export function applyPbiEndpointQuery(
+  endpoint: PbiEndpointKey,
+  path: string,
+  overrides?: PbiQueryOverrides,
+): string {
   const current = new URL(path, "https://dummy.local");
   const params = current.searchParams;
 
-  const defaultPeriodo = process.env.PBI_DEFAULT_PERIODO?.trim() || "MesAtual";
-  const defaultOsPeriodo = process.env.PBI_OS_PERIODO?.trim() || "AnoCorrente";
+  const defaultPeriodo =
+    overrides?.defaultPeriodo?.trim() ||
+    process.env.PBI_DEFAULT_PERIODO?.trim() ||
+    "MesAtual";
+  const defaultOsPeriodo =
+    overrides?.osPeriodo?.trim() || process.env.PBI_OS_PERIODO?.trim() || "AnoCorrente";
   const defaultTipoManutencao =
     process.env.PBI_DEFAULT_TIPO_MANUTENCAO?.trim() || "Todos";
   const defaultDataInicio =
-    process.env.PBI_DEFAULT_DATA_INICIO?.trim() || getDateOffsetIso(-30);
+    overrides?.dataInicio?.trim() ||
+    process.env.PBI_DEFAULT_DATA_INICIO?.trim() ||
+    getDateOffsetIso(-30);
   const defaultDataFim =
-    process.env.PBI_DEFAULT_DATA_FIM?.trim() || getDateOffsetIso(0);
+    overrides?.dataFim?.trim() ||
+    process.env.PBI_DEFAULT_DATA_FIM?.trim() ||
+    getDateOffsetIso(0);
   const defaultCompanyId = process.env.PBI_COMPANY_ID?.trim();
-  const defaultEmpresasIds = (process.env.PBI_EMPRESAS_IDS?.trim() || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
+  const defaultEmpresasIds =
+    overrides?.empresasIds && overrides.empresasIds.length
+      ? overrides.empresasIds
+      : (process.env.PBI_EMPRESAS_IDS?.trim() || "")
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
 
   switch (endpoint) {
     case "cronograma": {

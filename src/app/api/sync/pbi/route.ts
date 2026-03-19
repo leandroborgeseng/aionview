@@ -19,9 +19,29 @@ async function handleSync(req: Request) {
   if (!authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const url = new URL(req.url);
+  const includeAllEndpoints = url.searchParams.get("all") === "1";
+  const osPeriodo = url.searchParams.get("osPeriodo") ?? undefined;
+  const defaultPeriodo = url.searchParams.get("periodo") ?? undefined;
+  const dataInicio = url.searchParams.get("dataInicio") ?? undefined;
+  const dataFim = url.searchParams.get("dataFim") ?? undefined;
+  const empresasIds = (url.searchParams.get("empresasIds") ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
   // Executa a sincronização de forma síncrona e retorna o resultado.
   // (No próximo passo podemos desacoplar em background/filas, mas já atende o Railway.)
-  const result = await runPbiSync();
+  const result = await runPbiSync({
+    includeAllEndpoints,
+    queryOverrides: {
+      osPeriodo,
+      defaultPeriodo,
+      dataInicio,
+      dataFim,
+      empresasIds,
+    },
+  });
   return NextResponse.json(result, { status: 200 });
 }
 
