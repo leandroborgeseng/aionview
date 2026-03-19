@@ -48,7 +48,8 @@ export const authOptions: NextAuthOptions = {
   secret:
     process.env.NEXTAUTH_SECRET ??
     process.env.AUTH_SECRET ??
-    process.env.CRON_SECRET,
+    process.env.CRON_SECRET ??
+    "aionview-insecure-secret-change-in-production",
   pages: {
     signIn: "/login",
   },
