@@ -76,6 +76,13 @@ Para `disponibilidade_equipamento_mes_a_mes`, você pode enviar parâmetros via:
 - `PBI_DISP_MES_DATA_INICIO`
 - `PBI_DISP_MES_DATA_FIM`
 
+Para endpoints com filtros obrigatórios, configure os defaults:
+- `PBI_DEFAULT_PERIODO` (ex: `MesAtual`)
+- `PBI_DEFAULT_TIPO_MANUTENCAO` (ex: `Todos`)
+- `PBI_DEFAULT_DATA_INICIO` e `PBI_DEFAULT_DATA_FIM` (ISO date-time)
+- `PBI_EMPRESAS_IDS` (lista separada por vírgula, ex: `1,2`)
+- `PBI_COMPANY_ID` (usado no endpoint de oficina)
+
 Rota interna:
 - `POST /api/sync/pbi`
 
