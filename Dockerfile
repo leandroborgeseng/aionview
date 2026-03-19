@@ -38,6 +38,6 @@ EXPOSE 3000
 CMD [
   "sh",
   "-c",
-  "npx prisma migrate deploy || true; npx prisma db seed || true; node server.js"
+  "npx prisma db push || true; npx prisma db seed || true; node server.js"
 ]
 
