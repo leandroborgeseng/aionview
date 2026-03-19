@@ -4,11 +4,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function getConnectionString() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("Missing DATABASE_URL");
-  }
-  return connectionString;
+  // Durante o build (especialmente no Railway), DATABASE_URL pode não estar disponível.
+  // Usamos um fallback apenas para evitar quebra de build-time import.
+  return (
+    process.env.DATABASE_URL ??
+    "postgresql://postgres:postgres@localhost:5432/postgres"
+  );
 }
 
 export const prisma =
