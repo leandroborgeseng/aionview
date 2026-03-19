@@ -1,5 +1,5 @@
 import { prisma } from "@/server/db/prisma";
-import { pbiGet } from "@/server/integrations/pbi/pbiClient";
+import { PbiClientError, pbiGet } from "@/server/integrations/pbi/pbiClient";
 import { pbiEndpoints, type PbiEndpointKey } from "@/server/integrations/pbi/endpoints";
 import type { Prisma } from "@prisma/client";
 
@@ -41,7 +41,11 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
           companyId,
           endpoint: ep.key,
           status: "success",
-          requestMeta: { path: ep.path },
+          requestMeta: {
+            path: ep.path,
+            apiKeyEnv: ep.apiKeyEnv,
+            apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
+          },
           payload: payloadJson,
         },
       });
@@ -50,7 +54,23 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
       // no próximo passo incremental, mantendo o job tolerante a falhas.
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
-      errors.push({ endpoint: ep.key, message });
+      const status = err instanceof PbiClientError ? err.status : undefined;
+      const body = err instanceof PbiClientError ? err.body : undefined;
+      const bodyForJson =
+        body === undefined
+          ? null
+          : typeof body === "string"
+          ? body
+          : JSON.parse(JSON.stringify(body));
+      const bodyText =
+        body === undefined
+          ? ""
+          : ` body=${JSON.stringify(body).slice(0, 400)}`;
+      const detailedMessage = status
+        ? `${message} [status=${status}]${bodyText}`
+        : `${message}${bodyText}`;
+
+      errors.push({ endpoint: ep.key, message: detailedMessage });
 
       await prisma.rawApiPayload.create({
         data: {
@@ -58,9 +78,14 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
           companyId,
           endpoint: ep.key,
           status: "error",
-          requestMeta: { path: ep.path },
-          payload: { error: true, message },
-          errorMessage: message,
+          requestMeta: {
+            path: ep.path,
+            apiKeyEnv: ep.apiKeyEnv,
+            apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
+            httpStatus: status ?? null,
+          },
+          payload: { error: true, message: detailedMessage, status, body: bodyForJson },
+          errorMessage: detailedMessage,
         },
       });
     }
