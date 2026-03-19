@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/common/DataTable";
 
 type OsRow = {
@@ -12,25 +13,6 @@ type OsRow = {
   lockCategory: string;
   ageDays: number;
 };
-
-const data: OsRow[] = Array.from({ length: 31 }).map((_, i) => ({
-  id: `os-${i + 1}`,
-  orderNumber: `OS-${String(i + 1).padStart(5, "0")}`,
-  equipment: `Equipamento ${i % 6 === 0 ? "Crítico" : i + 1}`,
-  priority: i % 3 === 0 ? "Alta" : i % 3 === 1 ? "Média" : "Baixa",
-  status: i % 4 === 0 ? "Aguardando" : i % 4 === 1 ? "Em andamento" : "Aberta",
-  lockCategory:
-    i % 5 === 0
-      ? "aguardando_compra"
-      : i % 5 === 1
-      ? "aguardando_peça"
-      : i % 5 === 2
-      ? "em_execucao"
-      : i % 5 === 3
-      ? "em_execucao"
-      : "sem_tratativa_clara",
-  ageDays: 2 + i * 3,
-}));
 
 const columns = [
   {
@@ -75,6 +57,39 @@ const columns = [
 ] as const;
 
 export default function OsPage() {
+  const [data, setData] = useState<OsRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/os", { cache: "no-store" });
+        if (!res.ok) throw new Error("Falha ao carregar OS");
+        const json = (await res.json()) as { items: OsRow[] };
+        if (!active) return;
+        setData(json.items ?? []);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Erro inesperado");
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const content = useMemo(() => {
+    if (loading) return <div className="text-sm opacity-70">Carregando ordens de serviço...</div>;
+    if (error) return <div className="text-sm text-destructive">{error}</div>;
+    return <DataTable columns={columns as any} data={data} getRowId={(r) => r.id} />;
+  }, [loading, error, data]);
+
   return (
     <div className="p-6 space-y-4">
       <div>
@@ -84,7 +99,7 @@ export default function OsPage() {
         </p>
       </div>
 
-      <DataTable columns={columns as any} data={data} getRowId={(r) => r.id} />
+      {content}
     </div>
   );
 }

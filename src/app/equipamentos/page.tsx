@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/common/DataTable";
 
 type EquipmentRow = {
@@ -11,15 +12,6 @@ type EquipmentRow = {
   name: string;
   sector: string;
 };
-
-const data: EquipmentRow[] = Array.from({ length: 23 }).map((_, i) => ({
-  id: `eq-${i + 1}`,
-  tag: `TAG-${i + 1}`,
-  patrimonio: `PAT-${(i + 1) * 10}`,
-  serialNumber: `SN-${i + 1}`,
-  name: `Equipamento ${i + 1}`,
-  sector: i % 2 === 0 ? "Setor Principal" : "Setor Secundário",
-}));
 
 const columns = [
   {
@@ -59,6 +51,39 @@ const columns = [
 ] as const;
 
 export default function EquipamentosPage() {
+  const [data, setData] = useState<EquipmentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/equipamentos", { cache: "no-store" });
+        if (!res.ok) throw new Error("Falha ao carregar equipamentos");
+        const json = (await res.json()) as { items: EquipmentRow[] };
+        if (!active) return;
+        setData(json.items ?? []);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Erro inesperado");
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const content = useMemo(() => {
+    if (loading) return <div className="text-sm opacity-70">Carregando equipamentos...</div>;
+    if (error) return <div className="text-sm text-destructive">{error}</div>;
+    return <DataTable columns={columns as any} data={data} getRowId={(r) => r.id} />;
+  }, [loading, error, data]);
+
   return (
     <div className="p-6 space-y-4">
       <div>
@@ -66,7 +91,7 @@ export default function EquipamentosPage() {
         <p className="text-sm opacity-80">Lista por setor com estrutura pronta para auditoria.</p>
       </div>
 
-      <DataTable columns={columns as any} data={data} getRowId={(r) => r.id} />
+      {content}
     </div>
   );
 }

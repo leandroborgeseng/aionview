@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,27 +11,75 @@ import {
   Tooltip,
 } from "recharts";
 
-const kpiCards = [
-  { label: "Total de Equipamentos", value: 0 },
-  { label: "Total de OS no Período", value: 0 },
-  { label: "OS Corretivas Abertas", value: 0 },
-  { label: "OS Vencidas", value: 0 },
-  { label: "OS Travadas", value: 0 },
-  { label: "Disponibilidade Média", value: 0 },
-  { label: "TMEF Médio", value: 0 },
-  { label: "TPM Médio", value: 0 },
-];
-
-const osByMonth = [
-  { month: "Jan", count: 0 },
-  { month: "Fev", count: 0 },
-  { month: "Mar", count: 0 },
-  { month: "Abr", count: 0 },
-  { month: "Mai", count: 0 },
-  { month: "Jun", count: 0 },
-];
+type DashboardSummary = {
+  totalEquipamentos: number;
+  totalOsPeriodo: number;
+  osCorretivasAbertas: number;
+  osTravadas: number;
+  disponibilidadeMedia: number;
+  tmefMedio: number;
+  tpmMedio: number;
+  osByMonth: Array<{ month: string; count: number }>;
+};
 
 export default function DashboardPage() {
+  const [summary, setSummary] = useState<DashboardSummary>({
+    totalEquipamentos: 0,
+    totalOsPeriodo: 0,
+    osCorretivasAbertas: 0,
+    osTravadas: 0,
+    disponibilidadeMedia: 0,
+    tmefMedio: 0,
+    tpmMedio: 0,
+    osByMonth: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/dashboard", { cache: "no-store" });
+        if (!res.ok) throw new Error("Falha ao carregar dashboard");
+        const json = (await res.json()) as { summary: DashboardSummary };
+        if (!active) return;
+        setSummary(json.summary);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Erro inesperado");
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const kpiCards = useMemo(
+    () => [
+      { label: "Total de Equipamentos", value: summary.totalEquipamentos },
+      { label: "Total de OS no Período", value: summary.totalOsPeriodo },
+      { label: "OS Corretivas Abertas", value: summary.osCorretivasAbertas },
+      { label: "OS Travadas", value: summary.osTravadas },
+      { label: "Disponibilidade Média", value: summary.disponibilidadeMedia },
+      { label: "TMEF Médio", value: summary.tmefMedio },
+      { label: "TPM Médio", value: summary.tpmMedio },
+    ],
+    [summary],
+  );
+
+  const osByMonth = summary.osByMonth.length
+    ? summary.osByMonth
+    : [
+        { month: "Jan", count: 0 },
+        { month: "Fev", count: 0 },
+        { month: "Mar", count: 0 },
+      ];
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -44,7 +93,7 @@ export default function DashboardPage() {
         {kpiCards.map((c) => (
           <Card key={c.label} className="p-4">
             <div className="text-sm opacity-80">{c.label}</div>
-            <div className="text-2xl font-semibold mt-2">{c.value}</div>
+            <div className="text-2xl font-semibold mt-2">{loading ? "-" : c.value}</div>
           </Card>
         ))}
       </div>
@@ -70,6 +119,7 @@ export default function DashboardPage() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+          {error ? <div className="text-sm text-destructive mt-2">{error}</div> : null}
         </Card>
 
         <Card className="p-4">
