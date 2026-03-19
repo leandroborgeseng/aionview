@@ -27,8 +27,10 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-72 hidden lg:flex lg:flex-col border-r bg-background/50">
-      <div className="px-4 py-4 font-semibold">AionView</div>
+    <aside className="w-72 hidden lg:flex lg:flex-col border-r bg-background/80 backdrop-blur">
+      <div className="px-4 py-4 border-b">
+        <img src="/brand/aion-wordmark.svg" alt="AION" className="h-10 w-auto" />
+      </div>
       <nav className="px-2 pb-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => {

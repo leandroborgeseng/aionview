@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { pbiEndpoints } from "@/server/integrations/pbi/endpoints";
+import { getEnabledPbiEndpoints } from "@/server/integrations/pbi/endpoints";
 import { applyPbiEndpointQuery, resolvePbiPath } from "@/server/sync/pbi/path-resolver";
 
 function authorized(req: Request) {
@@ -30,7 +30,8 @@ export async function GET(req: Request) {
   const probe = url.searchParams.get("probe") === "1";
   const baseUrl = (process.env.PBI_BASE_URL ?? "").replace(/\/+$/, "");
 
-  const resolved = pbiEndpoints.map((ep) => {
+  const enabledEndpoints = getEnabledPbiEndpoints();
+  const resolved = enabledEndpoints.map((ep) => {
     const resolvedPath = resolvePbiPath(ep.path, ep.pathEnv);
     const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath);
     const fullUrl = `${baseUrl}${pathWithQuery.startsWith("/") ? pathWithQuery : `/${pathWithQuery}`}`;
@@ -51,6 +52,7 @@ export async function GET(req: Request) {
         ok: true,
         baseUrl,
         usingFallbackApiKey: Boolean(process.env.PBI_API_KEY),
+        enabledCount: enabledEndpoints.length,
         endpoints: resolved,
       },
       { status: 200 },

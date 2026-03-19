@@ -22,15 +22,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [eq, dispMes, osAnalitico, osResumida] = await Promise.all([
-    latest("equipamentos"),
+  const [dispMes, osResumida] = await Promise.all([
     latest("disponibilidade_equipamento_mes_a_mes"),
-    latest("listagem_analitica_das_os"),
     latest("listagem_analitica_das_os_resumida"),
   ]);
 
-  const equipmentSource = eq ?? dispMes;
-  const osSource = osAnalitico ?? osResumida;
+  const equipmentSource = dispMes;
+  const osSource = osResumida;
 
   const equipmentItems = normalizeEquipments(equipmentSource?.payload ?? []);
   const osItems = normalizeServiceOrders(osSource?.payload ?? []);
@@ -38,8 +36,8 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     sources: {
-      equipamentos: eq ? "equipamentos" : dispMes ? "disponibilidade_equipamento_mes_a_mes" : null,
-      os: osAnalitico ? "listagem_analitica_das_os" : osResumida ? "listagem_analitica_das_os_resumida" : null,
+      equipamentos: dispMes ? "disponibilidade_equipamento_mes_a_mes" : null,
+      os: osResumida ? "listagem_analitica_das_os_resumida" : null,
     },
     latest: {
       equipamentosAt: equipmentSource?.receivedAt ?? null,

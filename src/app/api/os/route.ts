@@ -4,9 +4,8 @@ import { getLatestPayloadByEndpoint } from "@/server/repositories/raw-payload-re
 import { normalizeServiceOrders } from "@/server/services/pbi-normalizers";
 
 export async function GET() {
-  const latestAnalitico = await getLatestPayloadByEndpoint("listagem_analitica_das_os");
   const latestResumido = await getLatestPayloadByEndpoint("listagem_analitica_das_os_resumida");
-  const latest = latestAnalitico ?? latestResumido;
+  const latest = latestResumido;
 
   if (!latest) {
     return NextResponse.json(

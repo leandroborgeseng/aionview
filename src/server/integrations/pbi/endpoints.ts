@@ -106,3 +106,23 @@ export const pbiEndpoints: Array<{
   },
 ];
 
+const defaultEnabledEndpoints: PbiEndpointKey[] = [
+  "disponibilidade_equipamento_mes_a_mes",
+  "listagem_analitica_das_os_resumida",
+];
+
+export function getEnabledPbiEndpoints() {
+  const raw = process.env.PBI_ENABLED_ENDPOINTS?.trim();
+  if (!raw) {
+    return pbiEndpoints.filter((ep) => defaultEnabledEndpoints.includes(ep.key));
+  }
+
+  const requested = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean) as PbiEndpointKey[];
+
+  const allowed = new Set(requested);
+  return pbiEndpoints.filter((ep) => allowed.has(ep.key));
+}
+

@@ -87,6 +87,13 @@ export default function OsPage() {
   const content = useMemo(() => {
     if (loading) return <div className="text-sm opacity-70">Carregando ordens de serviço...</div>;
     if (error) return <div className="text-sm text-destructive">{error}</div>;
+    if (!data.length) {
+      return (
+        <div className="text-sm rounded-md border bg-card px-4 py-3">
+          Nenhuma OS disponível no endpoint ativo para o período atual.
+        </div>
+      );
+    }
     return <DataTable columns={columns as any} data={data} getRowId={(r) => r.id} />;
   }, [loading, error, data]);
 

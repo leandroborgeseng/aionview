@@ -1,6 +1,6 @@
 import { prisma } from "@/server/db/prisma";
 import { PbiClientError, pbiGet } from "@/server/integrations/pbi/pbiClient";
-import { pbiEndpoints, type PbiEndpointKey } from "@/server/integrations/pbi/endpoints";
+import { getEnabledPbiEndpoints, type PbiEndpointKey } from "@/server/integrations/pbi/endpoints";
 import type { Prisma } from "@prisma/client";
 import { applyPbiEndpointQuery, resolvePbiPath } from "./path-resolver";
 
@@ -19,6 +19,7 @@ export type PbiSyncResult = {
 };
 
 export async function runPbiSync(): Promise<PbiSyncResult> {
+  const enabledEndpoints = getEnabledPbiEndpoints();
   const companyId = await getDefaultCompanyId();
 
   const syncRun = await prisma.syncRun.create({
@@ -31,7 +32,7 @@ export async function runPbiSync(): Promise<PbiSyncResult> {
 
   const errors: Array<{ endpoint: PbiEndpointKey; message: string }> = [];
 
-  for (const ep of pbiEndpoints) {
+  for (const ep of enabledEndpoints) {
     const resolvedPath = resolvePbiPath(ep.path, ep.pathEnv);
     const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath);
     try {

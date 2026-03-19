@@ -104,7 +104,7 @@ export default function DashboardPage() {
             <div>
               <div className="text-sm opacity-80">OS por mês</div>
               <div className="text-base font-medium mt-1">
-                Preventivas x Corretivas (placeholder)
+                Série de OS por mês (endpoint ativo)
               </div>
             </div>
           </div>
@@ -125,10 +125,9 @@ export default function DashboardPage() {
         <Card className="p-4">
           <div className="text-sm opacity-80">Notas</div>
           <div className="mt-2 text-sm leading-relaxed">
-            Este dashboard já está pronto para evoluir incrementalmente:
-            primeiro conectaremos as leituras do banco (equipamentos/OS/snaphots)
-            e depois implementaremos os demais módulos (MEL, MEL por área,
-            disponibilidade, obsolescência, contratos e compras).
+            Esta versão está configurada para usar apenas os endpoints PBI que
+            já retornam dados no ambiente atual. Os demais serão reativados de
+            forma incremental após validação de rota/autenticação.
           </div>
         </Card>
       </div>

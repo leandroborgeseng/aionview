@@ -35,7 +35,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background text-foreground">
-      <div className="w-full max-w-md border rounded-lg p-6 bg-card">
+      <div className="w-full max-w-md border rounded-lg p-6 bg-card shadow-sm">
+        <img src="/brand/aion-wordmark.svg" alt="AION" className="h-10 w-auto mb-4" />
         <h1 className="text-2xl font-semibold mb-2">Login</h1>
         <p className="text-sm opacity-80 mb-6">
           Acesse a plataforma de transparência e governança da Engenharia Clínica.
