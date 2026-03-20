@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getEnabledPbiEndpoints } from "@/server/integrations/pbi/endpoints";
-import { applyPbiEndpointQuery, resolvePbiPath, type PbiQueryOverrides } from "@/server/sync/pbi/path-resolver";
+import {
+  applyPbiEndpointQuery,
+  buildPbiPathCandidates,
+  resolvePbiPath,
+  type PbiQueryOverrides,
+} from "@/server/sync/pbi/path-resolver";
 
 function authorized(req: Request) {
   const configured = process.env.CRON_SECRET;
@@ -13,6 +18,7 @@ function authorized(req: Request) {
 type ProbeResult = {
   endpoint: string;
   url: string;
+  attemptedUrls: string[];
   apiKeyEnv: string;
   apiKeyConfigured: boolean;
   status: number | null;
@@ -45,6 +51,7 @@ export async function GET(req: Request) {
   const resolved = enabledEndpoints.map((ep) => {
     const resolvedPath = resolvePbiPath(ep.path, ep.pathEnv);
     const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath, queryOverrides);
+    const pathCandidates = buildPbiPathCandidates(pathWithQuery);
     const fullUrl = `${baseUrl}${pathWithQuery.startsWith("/") ? pathWithQuery : `/${pathWithQuery}`}`;
     return {
       endpoint: ep.key,
@@ -52,6 +59,9 @@ export async function GET(req: Request) {
       pathEnv: ep.pathEnv,
       resolvedPath: pathWithQuery,
       fullUrl,
+      candidateUrls: pathCandidates.map((p) =>
+        `${baseUrl}${p.startsWith("/") ? p : `/${p}`}`,
+      ),
       apiKeyEnv: ep.apiKeyEnv,
       apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
     };
@@ -88,26 +98,47 @@ export async function GET(req: Request) {
         headers,
       });
 
+      let selectedResponse = response;
+      let selectedUrl = ep.fullUrl;
+      const attemptedUrls: string[] = [ep.fullUrl];
+
+      if (!response.ok && response.status === 404 && ep.candidateUrls.length > 1) {
+        for (const candidateUrl of ep.candidateUrls.slice(1)) {
+          attemptedUrls.push(candidateUrl);
+          const candidateResponse = await fetch(candidateUrl, {
+            method: "GET",
+            headers,
+          });
+          if (candidateResponse.ok || candidateResponse.status !== 404) {
+            selectedResponse = candidateResponse;
+            selectedUrl = candidateUrl;
+            break;
+          }
+        }
+      }
+
       let bodyText = "";
       try {
-        bodyText = await response.text();
+        bodyText = await selectedResponse.text();
       } catch {
         bodyText = "";
       }
 
       results.push({
         endpoint: ep.endpoint,
-        url: ep.fullUrl,
+        url: selectedUrl,
+        attemptedUrls,
         apiKeyEnv: ep.apiKeyEnv,
         apiKeyConfigured: ep.apiKeyConfigured,
-        status: response.status,
-        ok: response.ok,
+        status: selectedResponse.status,
+        ok: selectedResponse.ok,
         bodySnippet: bodyText.slice(0, 300),
       });
     } catch (err) {
       results.push({
         endpoint: ep.endpoint,
         url: ep.fullUrl,
+        attemptedUrls: ep.candidateUrls,
         apiKeyEnv: ep.apiKeyEnv,
         apiKeyConfigured: ep.apiKeyConfigured,
         status: null,

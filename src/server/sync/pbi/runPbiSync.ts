@@ -2,7 +2,12 @@ import { prisma } from "@/server/db/prisma";
 import { PbiClientError, pbiGet } from "@/server/integrations/pbi/pbiClient";
 import { getEnabledPbiEndpoints, type PbiEndpointKey } from "@/server/integrations/pbi/endpoints";
 import type { Prisma } from "@prisma/client";
-import { applyPbiEndpointQuery, resolvePbiPath, type PbiQueryOverrides } from "./path-resolver";
+import {
+  applyPbiEndpointQuery,
+  buildPbiPathCandidates,
+  resolvePbiPath,
+  type PbiQueryOverrides,
+} from "./path-resolver";
 
 async function getDefaultCompanyId(): Promise<string | null> {
   const fromEnv = process.env.DEFAULT_COMPANY_ID;
@@ -40,8 +45,33 @@ export async function runPbiSync(opts?: {
   for (const ep of enabledEndpoints) {
     const resolvedPath = resolvePbiPath(ep.path, ep.pathEnv);
     const pathWithQuery = applyPbiEndpointQuery(ep.key, resolvedPath, opts?.queryOverrides);
+    const pathCandidates = buildPbiPathCandidates(pathWithQuery);
+    let selectedPath = pathWithQuery;
     try {
-      const payload = await pbiGet(pathWithQuery, { apiKeyEnv: ep.apiKeyEnv });
+      let payload: unknown = null;
+      let lastError: unknown = null;
+
+      for (const candidatePath of pathCandidates) {
+        try {
+          payload = await pbiGet(candidatePath, { apiKeyEnv: ep.apiKeyEnv });
+          selectedPath = candidatePath;
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          // Em 401/403 não faz sentido continuar tentando outros paths.
+          if (
+            err instanceof PbiClientError &&
+            (err.status === 401 || err.status === 403)
+          ) {
+            break;
+          }
+        }
+      }
+
+      if (lastError) {
+        throw lastError;
+      }
 
       const payloadJson = payload as Prisma.InputJsonValue;
       await prisma.rawApiPayload.create({
@@ -52,7 +82,8 @@ export async function runPbiSync(opts?: {
           status: "success",
           requestMeta: {
             path: ep.path,
-            resolvedPath: pathWithQuery,
+            resolvedPath: selectedPath,
+            pathCandidates,
             apiKeyEnv: ep.apiKeyEnv,
             apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
           },
@@ -91,6 +122,7 @@ export async function runPbiSync(opts?: {
           requestMeta: {
             path: ep.path,
             resolvedPath: pathWithQuery,
+            pathCandidates,
             apiKeyEnv: ep.apiKeyEnv,
             apiKeyConfigured: Boolean(process.env[ep.apiKeyEnv] ?? process.env.PBI_API_KEY),
             httpStatus: status ?? null,

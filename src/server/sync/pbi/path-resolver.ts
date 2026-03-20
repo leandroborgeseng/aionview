@@ -116,6 +116,32 @@ export function applyPbiEndpointQuery(
   return finalPath;
 }
 
+export function buildPbiPathCandidates(pathWithQuery: string): string[] {
+  const current = new URL(pathWithQuery, "https://dummy.local");
+  const pathname = current.pathname;
+  const query = current.searchParams.toString();
+  const withQuery = (p: string) => `${p}${query ? `?${query}` : ""}`;
+
+  const out = new Set<string>();
+  out.add(withQuery(pathname));
+
+  const pbiV1Prefix = "/api/pbi/v1/";
+  const apiV1Prefix = "/api/v1/";
+
+  if (pathname.startsWith(pbiV1Prefix)) {
+    const rest = pathname.slice(pbiV1Prefix.length);
+    out.add(withQuery(`/api/v1/${rest}`));
+    out.add(withQuery(`/api/pbi/${rest}`));
+    out.add(withQuery(`/pbi/v1/${rest}`));
+    out.add(withQuery(`/v1/${rest}`));
+  } else if (pathname.startsWith(apiV1Prefix)) {
+    const rest = pathname.slice(apiV1Prefix.length);
+    out.add(withQuery(`/api/pbi/v1/${rest}`));
+  }
+
+  return Array.from(out);
+}
+
 function ensure(params: URLSearchParams, key: string, value: string) {
   if (!params.has(key) && value) params.set(key, value);
 }
